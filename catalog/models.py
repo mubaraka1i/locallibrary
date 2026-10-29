@@ -38,7 +38,7 @@ class Author(models.Model):
 
 class Book(models.Model):
     title = models.CharField(max_length=200)
-    author = models.ForeignKey('Author', on_delete=models.SET_NULL, null=True)
+    authors = models.ManyToManyField('Author', through='BookAuthor', related_name='books')
     summary = models.TextField(max_length=1000, help_text="Enter a brief description of the book")
     isbn = models.CharField('ISBN', max_length=13, help_text='13 Character <a href="https://www.isbn-international.org/content/what-isbn">ISBN number</a>')
     genre = models.ManyToManyField(Genre, help_text="Select a genre for this book")
@@ -53,9 +53,24 @@ class Book(models.Model):
     def __str__(self):
         return self.title
 
+    def display_authors(self):
+        return ', '.join(str(ba.author) for ba in self.bookauthor_set.select_related('author'))
+    display_authors.short_description = 'Authors'
+
     def display_genre(self):
         return ', '.join(genre.name for genre in self.genre.all()[:3])
     display_genre.short_description = 'Genre'
+
+class BookAuthor(models.Model):
+    book = models.ForeignKey('Book', on_delete=models.CASCADE)
+    author = models.ForeignKey('Author', on_delete=models.CASCADE)
+    author_order = models.IntegerField(default=1)
+
+    class Meta:
+        ordering = ['book', 'author_order']
+
+    def __str__(self):
+        return f'{self.book} - {self.author} (#{self.author_order})'
 
 class BookInstance(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, help_text="Unique ID for this particular book across whole library")
